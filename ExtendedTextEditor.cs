@@ -30,6 +30,9 @@ namespace beam
             this.ShowLineNumbers = true;
             this.Padding = new System.Windows.Thickness(5.0);
             this.LineNumbersForeground = new SolidColorBrush(Color.FromArgb(255, 101, 123, 131)); // base 0
+
+            TextArea.Caret.PositionChanged += (sender, e) =>
+                CaretMoved();
         }
 
         protected virtual void RaisePropertyChanged(string propertyName)
@@ -67,6 +70,7 @@ namespace beam
 
 		object undoGroupDescriptor;
 
+        #region MouseMove
         override protected void OnPreviewMouseMove(MouseEventArgs e)
         {
 			if (e.Handled)
@@ -149,9 +153,10 @@ namespace beam
                 e.Handled = true;
             }
         }
+        #endregion
 
-		#region MouseLeftButtonDown
-		override protected void OnPreviewMouseLeftButtonDown(MouseButtonEventArgs e)
+        #region MouseLeftButtonDown
+        override protected void OnPreviewMouseLeftButtonDown(MouseButtonEventArgs e)
 		{
             if (e.Handled==true)
                 return;
@@ -192,5 +197,18 @@ namespace beam
 		}
 		#endregion
 
+
+        protected void CaretMoved()
+        {
+            int offset = TextArea.Caret.Offset;
+
+            if (offset > 0)
+            {
+                char s = TextArea.Document.GetCharAt(TextArea.Caret.Offset - 1);
+                Console.WriteLine(s);
+
+                //TextArea.Document.
+            }
+        }
     }
 }
