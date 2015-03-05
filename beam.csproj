@@ -126,6 +126,12 @@
   <ItemGroup>
     <Resource Include="icon.png" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\meme\fsharpinterpreter\meme.fsproj">
+      <Project>{91371e03-909b-4969-9730-f9f233290f08}</Project>
+      <Name>meme</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

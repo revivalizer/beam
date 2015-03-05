@@ -205,7 +205,37 @@ namespace beam
             if (offset > 0)
             {
                 char s = TextArea.Document.GetCharAt(TextArea.Caret.Offset - 1);
-                Console.WriteLine(s);
+                //Console.WriteLine(s);
+
+                if (s==')')
+                {
+                    int curOffset = offset;
+
+                    while (curOffset > -1)
+                    {
+                        curOffset = TextArea.Document.LastIndexOf('(', 0, curOffset);
+
+                        if (curOffset > -1)
+                        {
+                            string tryString = TextArea.Document.GetText(curOffset, offset-curOffset);
+
+                            if (global::ParserLogic.parse_success(tryString))
+                            {
+                                Console.WriteLine(tryString);
+                                break;
+                            }
+
+                        }
+                        else
+                        {
+                            // failed at offset - 1
+                            Console.WriteLine("Failed at " + (TextArea.Caret.Offset - 1));
+                        }
+                    }
+
+                    //Console.WriteLine(a);
+                    
+                }
 
                 //TextArea.Document.
             }
