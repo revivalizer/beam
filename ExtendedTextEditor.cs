@@ -20,6 +20,38 @@ using System.Windows.Media;
 
 namespace beam
 {
+    public class HighlightSExprBackgroundRenderer : IBackgroundRenderer
+    {
+        private ExtendedTextEditor _editor;
+
+        public HighlightSExprBackgroundRenderer(ExtendedTextEditor editor)
+        {
+            _editor = editor;
+        }
+
+        public KnownLayer Layer
+        {
+            get { return KnownLayer.Background; }
+        }
+
+        public void Draw(TextView textView, DrawingContext drawingContext)
+        {
+            if (_editor.Document == null)
+                return;
+
+            if (_editor.sexprMode == ExtendedTextEditor.MatchMode.None)
+                return;
+
+            textView.EnsureVisualLines();
+            var currentLine = _editor.Document.GetLineByOffset(_editor.CaretOffset);
+            foreach (var rect in BackgroundGeometryBuilder.GetRectsForSegment(textView, _editor.sexprSeg))
+            {
+                drawingContext.DrawRectangle(
+                    new SolidColorBrush(Color.FromArgb(0x40, 0x80, 0x80, 0xFF)), null,
+                    rect);
+            }
+        }
+    }
     public class ExtendedTextEditor : TextEditor, INotifyPropertyChanged
     {
         public ExtendedTextEditor()
@@ -33,6 +65,8 @@ namespace beam
 
             TextArea.Caret.PositionChanged += (sender, e) =>
                 CaretMoved();
+
+            TextArea.TextView.BackgroundRenderers.Add(new HighlightSExprBackgroundRenderer(this));
         }
 
         protected virtual void RaisePropertyChanged(string propertyName)
@@ -198,9 +232,83 @@ namespace beam
 		#endregion
 
 
+        void MarkLeft(int startOffset, char lookFor)
+        {
+            int curOffset = startOffset;
+
+            while (curOffset > -1)
+            {
+                curOffset = TextArea.Document.LastIndexOf(lookFor, 0, curOffset);
+
+                if (curOffset > -1)
+                {
+                    TextSegment curSegment = new TextSegment() { StartOffset = curOffset, EndOffset = startOffset };
+                    string tryString = TextArea.Document.GetText(curSegment);
+
+                    if (global::ParserLogic.parse_success(tryString))
+                    {
+                        sexprMode = MatchMode.Success;
+                        sexprSeg = curSegment;
+                        break;
+                    }
+
+                }
+                else
+                {
+                    // failed at offset - 1
+                    sexprMode = MatchMode.Failure;
+                    sexprSeg = new TextSegment() { StartOffset = TextArea.Caret.Offset-1, Length = 1 };
+                }
+            }
+        }
+
+		public enum MatchMode
+		{
+            None, // No hightlight
+            Success, // Matched highlight
+            Failure, // Failed to match
+		}
+
+        public MatchMode sexprMode;
+        public TextSegment sexprSeg;
+
+        void MarkRight(int startOffset, char lookFor)
+        {
+            int curOffset = startOffset;
+
+            while (curOffset > -1)
+            {
+                curOffset = TextArea.Document.IndexOf(lookFor, curOffset+1, TextArea.Document.TextLength-curOffset-1);
+
+                if (curOffset > -1)
+                {
+                    TextSegment curSegment = new TextSegment() { StartOffset = startOffset, EndOffset = curOffset + 1 };
+                    string tryString = TextArea.Document.GetText(curSegment);
+
+                    if (global::ParserLogic.parse_success(tryString))
+                    {
+                        sexprMode = MatchMode.Success;
+                        sexprSeg = curSegment;
+                        break;      
+                    }
+
+                }
+                else
+                {
+                    sexprMode = MatchMode.Failure;
+                    sexprSeg = new TextSegment() { StartOffset = TextArea.Caret.Offset, Length = 1 };
+                }
+            }
+        }
+
         protected void CaretMoved()
         {
+            MatchMode curMode = sexprMode;
+            TextSegment curSeg = sexprSeg;
+
             int offset = TextArea.Caret.Offset;
+
+            sexprMode = MatchMode.None;
 
             if (offset > 0)
             {
@@ -209,36 +317,23 @@ namespace beam
 
                 if (s==')')
                 {
-                    int curOffset = offset;
-
-                    while (curOffset > -1)
-                    {
-                        curOffset = TextArea.Document.LastIndexOf('(', 0, curOffset);
-
-                        if (curOffset > -1)
-                        {
-                            string tryString = TextArea.Document.GetText(curOffset, offset-curOffset);
-
-                            if (global::ParserLogic.parse_success(tryString))
-                            {
-                                Console.WriteLine(tryString);
-                                break;
-                            }
-
-                        }
-                        else
-                        {
-                            // failed at offset - 1
-                            Console.WriteLine("Failed at " + (TextArea.Caret.Offset - 1));
-                        }
-                    }
-
-                    //Console.WriteLine(a);
-                    
+                    MarkLeft(offset, '(');
                 }
-
-                //TextArea.Document.
             }
+
+            if (offset < TextArea.Document.TextLength)
+            {
+                char s = TextArea.Document.GetCharAt(TextArea.Caret.Offset);
+                //Console.WriteLine(s);
+
+                if (s=='(')
+                {
+                    MarkRight(offset, ')');
+                }
+            }
+
+            if (curMode != sexprMode || curSeg != sexprSeg)
+                TextArea.TextView.InvalidateLayer(KnownLayer.Background);
         }
     }
 }
